@@ -27,6 +27,10 @@ async function updateTable(tableName, columnName, apiUrl) {
       headers: { Authorization: `Bearer ${TOKEN}` }
     });
     if (!listRes.ok) {
+      if (listRes.status === 404) {
+        console.log(`Table ${tableName} does not exist, skipping update.`);
+        return;
+      }
       throw new Error(`Failed to list rows for ${tableName}: ${listRes.statusText}`);
     }
     const rows = await listRes.json();
