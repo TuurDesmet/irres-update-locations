@@ -1,0 +1,24 @@
+name: Update Botpress Tables
+
+on:
+  schedule:
+    - cron: '0 23 * * *'  # 23:00 UTC = 00:00 CET (Belgium time)
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run update script
+        run: node update-botpress.js
+        env:
+          BOT_ID: ${{ secrets.BOTPRESS_BOT_ID }}
+          TOKEN: ${{ secrets.BOTPRESS_TOKEN }}
