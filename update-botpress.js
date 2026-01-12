@@ -65,8 +65,8 @@ async function updateTable(tableName, columnName, apiUrl) {
 }
 
 async function main() {
-  await updateTable('LocationsFilter', 'Locations', 'https://irres-location-scraper.onrender.com/api/locations');
-  await updateTable('OfficesImages', 'Image', 'https://irres-location-scraper.onrender.com/api/office-images');
+  await updateTable('LocationsFilterTable', 'Locations', 'https://irres-location-scraper.onrender.com/api/locations');
+  await updateTable('OfficeImagesTable', 'Image', 'https://irres-location-scraper.onrender.com/api/office-images');
 }
 
 main();
