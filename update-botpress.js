@@ -3,67 +3,67 @@ const TOKEN = process.env.TOKEN;
 
 async function updateTable(tableName, columnName, apiUrl) {
   try {
-    console.log(`Fetching data from ${apiUrl}...`);
+    // Fetch data from the API
     const response = await fetch(apiUrl);
     if (!response.ok) {
       throw new Error(`Failed to fetch from ${apiUrl}: ${response.statusText}`);
     }
     const apiResponse = await response.json();
 
-    let rows = [];
+    let dataToAdd = [];
     if (tableName === 'LocationsFilterTable') {
       // For locations: apiResponse.data.locations is an array of strings
-      rows = apiResponse.data.locations.map(location => ({ [columnName]: location }));
+      dataToAdd = apiResponse.data.locations.map(location => ({ [columnName]: location }));
     } else if (tableName === 'OfficeImagesTable') {
       // For images: apiResponse.data is an object { key: url, ... }
-      rows = Object.entries(apiResponse.data).map(([name, url]) => ({ [columnName]: { name, url } }));
+      dataToAdd = Object.entries(apiResponse.data).map(([name, url]) => ({ [columnName]: { name, url } }));
     }
 
-    console.log(`Deleting all rows from ${tableName}...`);
-    const deleteRes = await fetch(`https://api.botpress.cloud/v1/tables/${tableName}/rows/delete`, {
-      method: 'POST',
-      headers: {
-        'x-bot-id': BOT_ID,
-        'Authorization': `Bearer ${TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ deleteAllRows: true })
-    });
+    const baseUrl = `https://api.botpress.cloud/v1/bots/${BOT_ID}/tables/${tableName}`;
+    const rowsUrl = `${baseUrl}/rows`;
 
-    if (!deleteRes.ok) {
-      if (deleteRes.status === 404) {
+    // List existing rows
+    const listRes = await fetch(rowsUrl, {
+      headers: { Authorization: `Bearer ${TOKEN}` }
+    });
+    if (!listRes.ok) {
+      if (listRes.status === 404) {
         console.log(`Table ${tableName} does not exist, skipping update.`);
         return;
       }
-      throw new Error(`Failed to delete rows in ${tableName}: ${deleteRes.statusText}`);
+      throw new Error(`Failed to list rows for ${tableName}: ${listRes.statusText}`);
+    }
+    const rows = await listRes.json();
+
+    // Delete existing rows
+    for (const row of rows) {
+      const deleteRes = await fetch(`${rowsUrl}/${row.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${TOKEN}` }
+      });
+      if (!deleteRes.ok) {
+        console.warn(`Failed to delete row ${row.id} in ${tableName}: ${deleteRes.statusText}`);
+      }
     }
 
-    const deleteData = await deleteRes.json();
-    console.log(`Deleted rows:`, deleteData);
-
-    if (rows.length > 0) {
-      console.log(`Inserting ${rows.length} new rows into ${tableName}...`);
-      const insertRes = await fetch(`https://api.botpress.cloud/v1/tables/${tableName}/rows`, {
+    // Add new rows
+    for (const item of dataToAdd) {
+      const addRes = await fetch(rowsUrl, {
         method: 'POST',
         headers: {
-          'x-bot-id': BOT_ID,
-          'Authorization': `Bearer ${TOKEN}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${TOKEN}`
         },
-        body: JSON.stringify({ rows, waitComputed: true })
+        body: JSON.stringify({ data: item })
       });
-
-      if (!insertRes.ok) {
-        throw new Error(`Failed to insert rows into ${tableName}: ${insertRes.statusText}`);
+      if (!addRes.ok) {
+        console.error(`Failed to add row to ${tableName}: ${addRes.statusText}`);
       }
-
-      const insertData = await insertRes.json();
-      console.log(`Inserted rows:`, insertData);
     }
 
-    console.log(`✅ ${tableName} updated successfully!`);
+    console.log(`Updated ${tableName} with ${dataToAdd.length} items`);
   } catch (error) {
-    console.error(`❌ Error updating ${tableName}:`, error.message);
+    console.error(`Error updating ${tableName}:`, error);
     process.exit(1);
   }
 }
