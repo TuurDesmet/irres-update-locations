@@ -31,6 +31,10 @@ async function updateTable(tableName, columnName, apiUrl) {
     });
 
     if (!deleteRes.ok) {
+      if (deleteRes.status === 404) {
+        console.log(`Table ${tableName} does not exist, skipping update.`);
+        return;
+      }
       throw new Error(`Failed to delete rows in ${tableName}: ${deleteRes.statusText}`);
     }
 
